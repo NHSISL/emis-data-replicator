@@ -1,3 +1,5 @@
+[![.NET](https://github.com/NHSISL/emis-data-replicator/actions/workflows/dotnet.yml/badge.svg)](https://github.com/NHSISL/emis-data-replicator/actions/workflows/dotnet.yml)
+
 # Emis Data Replicator
 
 ## Intended use
