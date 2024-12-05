@@ -2,6 +2,8 @@
 
 # Emis Data Replicator
 
+![](emis-generation.gif)
+
 ## Intended use
 
 This command line tool is used to generate loads of test data for the EMIS GP supplier.

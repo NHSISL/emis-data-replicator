@@ -1,5 +1,7 @@
 ﻿using CsvHelper;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using ShellProgressBar;
 
 namespace data_replicator;
@@ -69,10 +71,8 @@ internal class Program
     private static dynamic[] Prescribing_DrugRecord;
     private static dynamic[] Prescribing_IssueRecord;
 
-    private static IEnumerable<object> GetEmisObjects(string pathDirectory, ProgressBar progressBar, int orgNumber)
+    private static IEnumerable<object> GetEmisObjects(ProgressBar progressBar, int orgNumber, int targetPatientCount)
     {
-        int targetPatientCount = 35000;
-
         var childOptions = new ProgressBarOptions
         {
             ForegroundColor = ConsoleColor.Green,
@@ -131,7 +131,7 @@ internal class Program
 
         for (int patientIndex = 0; patientIndex < targetPatientCount; patientIndex++)
         {
-            childProgressBar.Tick();
+            childProgressBar.Tick($"Organsiation #{orgNumber}. Patient {patientIndex} of {targetPatientCount}.");
 
             string patientGuid = Guid.NewGuid().ToString();
 
@@ -480,29 +480,29 @@ internal class Program
         }
     }
 
-    private static void WriteRecords(string path, IEnumerable<object> records)
+    private static void WriteRecords(string path, IEnumerable<object> records, string prefix, string postfix)
     {
-        using var Admin_Organisation_writer = new StreamWriter(Path.Combine(path, @"Admin_Organisation.csv"));
+        using var Admin_Organisation_writer = new StreamWriter(Path.Combine(path, $"{prefix}Admin_Organisation{postfix}"));
         using var Admin_Organisation_csv = new CsvWriter(Admin_Organisation_writer, CultureInfo.InvariantCulture);
-        using var Admin_Patient_writer = new StreamWriter(Path.Combine(path, @"Admin_Patient.csv"));
+        using var Admin_Patient_writer = new StreamWriter(Path.Combine(path, $"{prefix}Admin_Patient{postfix}"));
         using var Admin_Patient_csv = new CsvWriter(Admin_Patient_writer, CultureInfo.InvariantCulture);
-        using var Admin_UserInRole_writer = new StreamWriter(Path.Combine(path, @"Admin_UserInRole.csv"));
+        using var Admin_UserInRole_writer = new StreamWriter(Path.Combine(path, $"{prefix}Admin_UserInRole{postfix}"));
         using var Admin_UserInRole_csv = new CsvWriter(Admin_UserInRole_writer, CultureInfo.InvariantCulture);
-        using var Appointment_Session_writer = new StreamWriter(Path.Combine(path, @"Appointment_Session.csv"));
+        using var Appointment_Session_writer = new StreamWriter(Path.Combine(path, $"{prefix}Appointment_Session{postfix}"));
         using var Appointment_Session_csv = new CsvWriter(Appointment_Session_writer, CultureInfo.InvariantCulture);
-        using var Appointment_Slot_writer = new StreamWriter(Path.Combine(path, @"Appointment_Slot.csv"));
+        using var Appointment_Slot_writer = new StreamWriter(Path.Combine(path, $"{prefix}Appointment_Slot{postfix}"));
         using var Appointment_Slot_csv = new CsvWriter(Appointment_Slot_writer, CultureInfo.InvariantCulture);
-        using var CareRecord_Consultation_writer = new StreamWriter(Path.Combine(path, @"CareRecord_Consultation.csv"));
+        using var CareRecord_Consultation_writer = new StreamWriter(Path.Combine(path, $"{prefix}CareRecord_Consultation{postfix}"));
         using var CareRecord_Consultation_csv = new CsvWriter(CareRecord_Consultation_writer, CultureInfo.InvariantCulture);
-        using var CareRecord_Diary_writer = new StreamWriter(Path.Combine(path, @"CareRecord_Diary.csv"));
+        using var CareRecord_Diary_writer = new StreamWriter(Path.Combine(path, $"{prefix}CareRecord_Diary{postfix}"));
         using var CareRecord_Diary_csv = new CsvWriter(CareRecord_Diary_writer, CultureInfo.InvariantCulture);
-        using var CareRecord_Observation_writer = new StreamWriter(Path.Combine(path, @"CareRecord_Observation.csv"));
+        using var CareRecord_Observation_writer = new StreamWriter(Path.Combine(path, $"{prefix}CareRecord_Observation{postfix}"));
         using var CareRecord_Observation_csv = new CsvWriter(CareRecord_Observation_writer, CultureInfo.InvariantCulture);
-        using var CareRecord_Problem_writer = new StreamWriter(Path.Combine(path, @"CareRecord_Problem.csv"));
+        using var CareRecord_Problem_writer = new StreamWriter(Path.Combine(path, $"{prefix}CareRecord_Problem{postfix}"));
         using var CareRecord_Problem_csv = new CsvWriter(CareRecord_Problem_writer, CultureInfo.InvariantCulture);
-        using var Prescribing_DrugRecord_writer = new StreamWriter(Path.Combine(path, @"Prescribing_DrugRecord.csv"));
+        using var Prescribing_DrugRecord_writer = new StreamWriter(Path.Combine(path, $"{prefix}Prescribing_DrugRecord{postfix}"));
         using var Prescribing_DrugRecord_csv = new CsvWriter(Prescribing_DrugRecord_writer, CultureInfo.InvariantCulture);
-        using var Prescribing_IssueRecord_writer = new StreamWriter(Path.Combine(path, @"Prescribing_IssueRecord.csv"));
+        using var Prescribing_IssueRecord_writer = new StreamWriter(Path.Combine(path, $"{prefix}Prescribing_IssueRecord{postfix}"));
         using var Prescribing_IssueRecord_csv = new CsvWriter(Prescribing_IssueRecord_writer, CultureInfo.InvariantCulture);
 
         Admin_Organisation_csv.WriteHeader(typeof(Organisation));
@@ -592,9 +592,11 @@ internal class Program
             return;
         }
 
-        int orgsRequired = 1000000 / int.Parse(args[0]);
+        int patientsNeeded = int.Parse(args[0]);
 
-        int totalTicks = orgsRequired;
+        const int patientsPerPractice = 35000;
+
+        decimal orgsRequired = (decimal)patientsNeeded / patientsPerPractice;
 
         var options = new ProgressBarOptions
         {
@@ -617,13 +619,82 @@ internal class Program
         Prescribing_DrugRecord = GetSampleRecords(FindFilePath(pathDirectory, @"Prescribing_DrugRecord_"));
         Prescribing_IssueRecord = GetSampleRecords(FindFilePath(pathDirectory, @"Prescribing_IssueRecord_"));
 
-        using var progressBar = new ProgressBar(totalTicks, "Generating EMIS data", options);
+        using var progressBar = new ProgressBar((int)Math.Ceiling(orgsRequired), $"Generating EMIS data. Target population approximately {patientsNeeded}.", options);
 
         var records =
             ParallelEnumerable
-                .Range(0, count: orgsRequired)
-                .SelectMany(orgNumber => GetEmisObjects(pathDirectory, progressBar, orgNumber));
+                .Range(0, count: (int)Math.Ceiling(orgsRequired))
+                .SelectMany(orgNumber => GetEmisObjects(progressBar, orgNumber, orgsRequired < 1 ? patientsNeeded : patientsPerPractice));
 
-        WriteRecords(args[2], records);
+
+        var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+        string guid = Guid.NewGuid().ToString();
+        string number = random.Next(100000, 999999).ToString();
+
+        string prefix = $"bulk_{number}_";
+        string postfix = $"_{timestamp}_{guid}.csv";
+
+        string outputDirectory = Path.Combine(args[2], guid, timestamp);
+
+        Directory.CreateDirectory(outputDirectory);
+
+        File.Copy(
+            FindFilePath(pathDirectory, "Coding_ClinicalCode_"),
+            Path.Combine(outputDirectory, $"{prefix}Coding_ClinicalCode{postfix}"));
+
+        File.Copy(
+            FindFilePath(pathDirectory, "Coding_ClinicalCode_"),
+            Path.Combine(outputDirectory, $"{prefix}Coding_DrugCode{postfix}"));
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Admin_Location{postfix}"),
+            new[]
+            {
+                @"""LocationGuid"",""LocationName"",""LocationTypeDescription"",""ParentLocationGuid"",""OpenDate"",""CloseDate"",""MainContactName"",""FaxNumber"",""EmailAddress"",""PhoneNumber"",""HouseNameFlatNumber"",""NumberAndStreet"",""Village"",""Town"",""County"",""Postcode"",""Deleted"",""ProcessingId"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Admin_OrganisationLocation{postfix}"),
+            new[]
+            {
+                @"""OrganisationGuid"",""LocationGuid"",""IsMainLocation"",""Deleted"",""ProcessingId"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Admin_PatientHistory{postfix}"),
+            new[]
+            {
+                @"""PatientGuid"",""OrganisationGuid"",""HistoryDate"",""HistoryTime"",""StatusDescription"",""ProcessingId"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Agreements_SharingOrganisation{postfix}"),
+            new[]
+            {
+                @"""OrganisationGuid"",""IsActivated"",""LastModifiedDate"",""Disabled"",""Deleted"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Audit_PatientAudit{postfix}"),
+            new[]
+            {
+                @"""ItemGuid"",""PatientGuid"",""OrganisationGuid"",""ModifiedDate"",""ModifiedTime"",""UserInRoleGuid"",""ItemType"",""ModeType"",""ProcessingId"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}Audit_RegistrationAudit{postfix}"),
+            new[]
+            {
+                @"""PatientGuid"",""OrganisationGuid"",""ModifiedDate"",""ModifiedTime"",""UserInRoleGuid"",""ModeType"",""ProcessingId"""
+            });
+
+        File.WriteAllLines(
+            Path.Combine(outputDirectory, $"{prefix}CareRecord_ObservationReferral{postfix}"),
+            new[]
+            {
+                @"""ObservationGuid"",""PatientGuid"",""OrganisationGuid"",""ReferralTargetOrganisationGuid"",""ReferralUrgency"",""ReferralServiceType"",""ReferralMode"",""ReferralReceivedDate"",""ReferralReceivedTime"",""ReferralEndDate"",""ReferralSourceId"",""ReferralSourceOrganisationGuid"",""ReferralUBRN"",""ReferralReasonCodeId"",""ReferringCareProfessionalStaffGroupCodeId"",""ReferralEpisodeRTTMeasurementTypeId"",""ReferralEpisodeClosureDate"",""ReferralEpisodeDischargeLetterIssuedDate"",""ReferralClosureReasonCodeId"",""TransportRequired"",""ProcessingId"""
+            });
+
+        WriteRecords(outputDirectory, records, prefix, postfix);
     }
 }
