@@ -695,6 +695,8 @@ internal class Program
                 @"""ObservationGuid"",""PatientGuid"",""OrganisationGuid"",""ReferralTargetOrganisationGuid"",""ReferralUrgency"",""ReferralServiceType"",""ReferralMode"",""ReferralReceivedDate"",""ReferralReceivedTime"",""ReferralEndDate"",""ReferralSourceId"",""ReferralSourceOrganisationGuid"",""ReferralUBRN"",""ReferralReasonCodeId"",""ReferringCareProfessionalStaffGroupCodeId"",""ReferralEpisodeRTTMeasurementTypeId"",""ReferralEpisodeClosureDate"",""ReferralEpisodeDischargeLetterIssuedDate"",""ReferralClosureReasonCodeId"",""TransportRequired"",""ProcessingId"""
             });
 
+        File.Create(Path.Combine(outputDirectory, $"{patientsNeeded}_patients"));
+
         WriteRecords(outputDirectory, records, prefix, postfix);
     }
 }
